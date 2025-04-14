@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredients Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        #searchInput {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background-color: #f2f2f2;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        a {
+            color: #0078ff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination a {
+            color: black;
+            padding: 8px 16px;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            margin: 0 4px;
+        }
+        .pagination a.active {
+            background-color: #4CAF50;
+            color: white;
+            border: 1px solid #4CAF50;
+        }
+        .pagination a:hover:not(.active) {
+            background-color: #ddd;
+        }
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ingredients Database</h1>
+        
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search for ingredients..." onkeyup="filterTable()">
+        </div>
+        
+        <table id="ingredientsTable">
+            <thead>
+                <tr>
+                    <th>Ingredient Name</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Table rows will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+        
+        <div class="pagination" id="pagination">
+            <!-- Pagination links will be inserted here by JavaScript -->
+        </div>
+        
+        <div class="info" id="info">
+            <!-- Information about displayed results will be inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // All ingredients data
+        const allIngredients = [];
+        
+        // Pagination settings
+        const itemsPerPage = 20;
+        let currentPage = 1;
+        let filteredIngredients = [];
+        
+        // Fetch ingredients data from JSON file
+        fetch('ingredients.json')
+            .then(response => response.json())
+            .then(data => {
+                // Store the ingredients data
+                allIngredients.push(...data);
+                filteredIngredients = [...allIngredients];
+                
+                // Initialize the table
+                updateTable();
+            })
+            .catch(error => {
+                console.error('Error loading ingredients data:', error);
+                document.getElementById('tableBody').innerHTML = '<tr><td>Error loading ingredients data. Please try again later.</td></tr>';
+            });
+        
+        // Filter table based on search input
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            filteredIngredients = allIngredients.filter(ingredient => 
+                ingredient.toLowerCase().includes(searchTerm)
+            );
+            
+            // Reset to first page when search changes
+            currentPage = 1;
+            
+            // Update the table with filtered results
+            updateTable();
+        }
+        
+        // Update table with current page items
+        function updateTable() {
+            const tableBody = document.getElementById('tableBody');
+            const paginationElement = document.getElementById('pagination');
+            const infoElement = document.getElementById('info');
+            
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredIngredients.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredIngredients.length);
+            const currentItems = filteredIngredients.slice(startIndex, endIndex);
+            
+            // Clear existing table content
+            tableBody.innerHTML = '';
+            
+            // Add rows for current page
+            if (currentItems.length === 0) {
+                tableBody.innerHTML = '<tr><td>No matching ingredients found</td></tr>';
+            } else {
+                currentItems.forEach(ingredient => {
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    const link = document.createElement('a');
+                    
+                    link.href = `https://m.chemicalbook.com/Search_EN.aspx?keyword=${encodeURIComponent(ingredient)}`;
+                    link.target = '_blank';
+                    link.textContent = ingredient;
+                    
+                    cell.appendChild(link);
+                    row.appendChild(cell);
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // Update pagination
+            updatePagination(totalPages);
+            
+            // Update info text
+            if (filteredIngredients.length > 0) {
+                infoElement.textContent = `Showing ${startIndex + 1} to ${endIndex} of ${filteredIngredients.length} ingredients`;
+            } else {
+                infoElement.textContent = 'No ingredients to display';
+            }
+        }
+        
+        // Update pagination links
+        function updatePagination(totalPages) {
+            const paginationElement = document.getElementById('pagination');
+            paginationElement.innerHTML = '';
+            
+            if (totalPages <= 1) {
+                return;
+            }
+            
+            // Previous button
+            if (currentPage > 1) {
+                addPaginationLink(paginationElement, currentPage - 1, 'Previous');
+            }
+            
+            // Page number links
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(startPage + maxVisiblePages - 1, totalPages);
+            
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                addPaginationLink(paginationElement, i, i.toString(), i === currentPage);
+            }
+            
+            // Next button
+            if (currentPage < totalPages) {
+                addPaginationLink(paginationElement, currentPage + 1, 'Next');
+            }
+        }
+        
+        // Helper function to add pagination link
+        function addPaginationLink(container, page, text, isActive = false) {
+            const link = document.createElement('a');
+            link.href = '#';
+            link.textContent = text;
+            
+            if (isActive) {
+                link.classList.add('active');
+            }
+            
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                currentPage = page;
+                updateTable();
+                window.scrollTo(0, 0);
+            });
+            
+            container.appendChild(link);
+        }
+    </script>
+</body>
+</html>
